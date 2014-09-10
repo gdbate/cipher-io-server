@@ -1,0 +1,90 @@
+-- phpMyAdmin SQL Dump
+-- version 4.0.4
+-- http://www.phpmyadmin.net
+--
+-- Host: localhost
+-- Generation Time: Sep 10, 2014 at 11:50 PM
+-- Server version: 5.1.70
+-- PHP Version: 5.3.28
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8 */;
+
+--
+-- Database: `cipher`
+--
+CREATE DATABASE IF NOT EXISTS `cipher` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+USE `cipher`;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `group`
+--
+
+CREATE TABLE IF NOT EXISTS `group` (
+  `id` varchar(36) NOT NULL,
+  `idUser` int(10) unsigned NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `created` int(10) unsigned NOT NULL,
+  `admin` varchar(255) NOT NULL COMMENT 'privilege for setting topic, banning users, etc',
+  `invite` varchar(255) NOT NULL COMMENT 'privilege for ability to invite users',
+  `post` varchar(255) NOT NULL COMMENT 'privilege for write access',
+  `read` varchar(255) NOT NULL COMMENT 'privilege for read access',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `groupUser`
+--
+
+CREATE TABLE IF NOT EXISTS `groupUser` (
+  `idGroup` int(10) unsigned NOT NULL,
+  `idUser` int(10) unsigned NOT NULL,
+  `idUserInvite` int(10) unsigned NOT NULL,
+  `entered` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`idGroup`,`idUser`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `post`
+--
+
+CREATE TABLE IF NOT EXISTS `post` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `idGroup` int(11) NOT NULL,
+  `idUser` int(11) NOT NULL,
+  `content` text NOT NULL,
+  `entered` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user`
+--
+
+CREATE TABLE IF NOT EXISTS `user` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `nickname` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `ip` varchar(40) NOT NULL,
+  `entered` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `nickname` (`nickname`,`password`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
