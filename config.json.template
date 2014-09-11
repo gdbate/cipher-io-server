@@ -1,0 +1,14 @@
+{
+  "mysql":{
+    "host":"",
+    "port":"",
+  	"user":"",
+  	"password":"chicken",
+  	"database":"cipher",
+    "socketPath":false,
+  	"retry":10
+  },
+  "server":{
+  	"open":true
+  }
+}

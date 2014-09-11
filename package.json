@@ -1,0 +1,18 @@
+{
+  "name":"Cipher.io",
+  "version":"0.0.1",
+  "description":"Server for self-hosted cipher.io peer-to-peer secure group messaging app.",
+  "private":true,
+  "author":"Greg Bate <gdbate@gmail.com>",
+  "homepage":"https://github.com/gdbate/cipher-io-server",
+  "dependencies":{
+
+  	"express":"4.x",
+
+    "morgan": "~1.0.0",
+    "body-parser": "~1.0.0",
+    "method-override": "~1.0.0",
+
+    "mysql":"*"
+  }
+}
