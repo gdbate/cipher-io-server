@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Sep 10, 2014 at 11:50 PM
+-- Generation Time: Sep 11, 2014 at 04:39 PM
 -- Server version: 5.1.70
 -- PHP Version: 5.3.28
 
@@ -32,11 +32,12 @@ CREATE TABLE IF NOT EXISTS `group` (
   `id` varchar(36) NOT NULL,
   `idUser` int(10) unsigned NOT NULL,
   `name` varchar(255) NOT NULL,
+  `topic` varchar(512) DEFAULT NULL COMMENT 'Current topic of the group.',
   `created` int(10) unsigned NOT NULL,
   `admin` varchar(255) NOT NULL COMMENT 'privilege for setting topic, banning users, etc',
   `invite` varchar(255) NOT NULL COMMENT 'privilege for ability to invite users',
   `post` varchar(255) NOT NULL COMMENT 'privilege for write access',
-  `read` varchar(255) NOT NULL COMMENT 'privilege for read access',
+  `deleted` tinyint(1) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -77,12 +78,16 @@ CREATE TABLE IF NOT EXISTS `post` (
 
 CREATE TABLE IF NOT EXISTS `user` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `deviceId` varchar(255) NOT NULL COMMENT 'Some kind of uuid for the device (changes depending on platform).',
+  `devicePlatform` varchar(255) NOT NULL,
+  `deviceVersion` varchar(255) NOT NULL,
+  `deviceModel` varchar(255) NOT NULL,
   `nickname` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
   `ip` varchar(40) NOT NULL,
   `entered` int(10) unsigned NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `nickname` (`nickname`,`password`)
+  UNIQUE KEY `nickname` (`deviceId`,`nickname`,`password`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
