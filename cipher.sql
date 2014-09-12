@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Sep 11, 2014 at 04:39 PM
+-- Generation Time: Sep 12, 2014 at 05:37 PM
 -- Server version: 5.1.70
 -- PHP Version: 5.3.28
 
@@ -31,12 +31,12 @@ USE `cipher`;
 CREATE TABLE IF NOT EXISTS `group` (
   `id` varchar(36) NOT NULL,
   `idUser` int(10) unsigned NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `topic` varchar(512) DEFAULT NULL COMMENT 'Current topic of the group.',
+  `name` varchar(512) NOT NULL,
+  `topic` varchar(512) NOT NULL DEFAULT '' COMMENT 'Current topic of the group.',
   `created` int(10) unsigned NOT NULL,
-  `admin` varchar(255) NOT NULL COMMENT 'privilege for setting topic, banning users, etc',
-  `invite` varchar(255) NOT NULL COMMENT 'privilege for ability to invite users',
-  `post` varchar(255) NOT NULL COMMENT 'privilege for write access',
+  `admin` varchar(36) NOT NULL COMMENT 'privilege for setting topic, banning users, etc',
+  `invite` varchar(36) NOT NULL COMMENT 'privilege for ability to invite users',
+  `post` varchar(36) NOT NULL COMMENT 'privilege for write access',
   `deleted` tinyint(1) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -50,8 +50,10 @@ CREATE TABLE IF NOT EXISTS `group` (
 CREATE TABLE IF NOT EXISTS `groupUser` (
   `idGroup` int(10) unsigned NOT NULL,
   `idUser` int(10) unsigned NOT NULL,
-  `idUserInvite` int(10) unsigned NOT NULL,
+  `idUserInvitedBy` int(10) unsigned NOT NULL,
+  `inviteTime` int(10) unsigned NOT NULL,
   `entered` int(10) unsigned NOT NULL,
+  `banned` tinyint(1) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`idGroup`,`idUser`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -62,12 +64,14 @@ CREATE TABLE IF NOT EXISTS `groupUser` (
 --
 
 CREATE TABLE IF NOT EXISTS `post` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `idGroup` int(11) NOT NULL,
-  `idUser` int(11) NOT NULL,
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `idGroup` varchar(36) NOT NULL,
+  `idUser` int(10) unsigned NOT NULL,
   `content` text NOT NULL,
+  `type` varchar(32) NOT NULL COMMENT 'Type of content ie: text/image/video/etc',
   `entered` int(10) unsigned NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idGroup` (`idGroup`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
@@ -87,7 +91,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `ip` varchar(40) NOT NULL,
   `entered` int(10) unsigned NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `nickname` (`deviceId`,`nickname`,`password`)
+  UNIQUE KEY `deviceId` (`deviceId`,`nickname`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
