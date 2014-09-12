@@ -11,7 +11,7 @@
 	    return this.replace(/(?:^|\s)\S/g,function(a){return a.toUpperCase();});
 	  };
 	  var NameSpace={};
-  	NameSpace.now=function(){return Math.round(new Date().getTime()/1000));
+  	NameSpace.now=function(){return Math.round(new Date().getTime()/1000)};
 	  NameSpace.fInt=function(n,delimiter){return String(n).replace(/(\d)(?=(\d\d\d)+(?!\d))/g,'$1'+(delimiter||','))};
 	  NameSpace.fCurrency=function(n){n=+n;return '$'+n.toFixed(2)};
 	  NameSpace.fPercent=function(n){return (Math.round(n*1000)/10)+'%'};

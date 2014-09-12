@@ -4,13 +4,13 @@
 
 // G L O B A L S
 	GLOBAL.CIO=require('./ns')();
-	CIO.require=require('nowpaper-global/require');
 	CIO.rdbSelect=require('./rdb-select');
 	CIO.rdbMysql=require('./rdb-mysql');
 	CIO.bcrypt=require('bcrypt');
 
 // L O A D - S E T T I N G S
 	CIO.loadConfig('config',__dirname,function(data){
+		console.log(data);
 		if(!data){
 			console.log('- Error Reading Settings');
 		}else{
@@ -29,19 +29,18 @@
 
 	var request=express();
 	request.use(bodyParser());
-	request.use(cookieParser());
 	request.use(express.static(__dirname+'/static'));
 
 	CIO.business=function(){
 
 // E X P R E S S
-		request.get('/',function(req,res){
+		request.route('/').all(function(req,res){
 			res.send('Go Away');
 		});
 
 		//first time opening app
 		//device,devicePlatform,deviceVersion,deviceModel,nickname,password1,password2
-		request.post('/user/init',function(req,res){
+		request.route('/user/init').post(function(req,res){
 			//confirm 2 passwords the same (also done on app, but never trust anything)
 			if(req.param('password1')!==req.param('password2')){
 				res.json({status:'error',message:'Passwords do not match.'});
@@ -79,7 +78,7 @@
 
 		//get a list of groups, and update the db user information
 		//user,device,password|devicePlatform,deviceVersion,deviceModel
-		request.post('/user/init',CIO.auth.userCredentials,function(req,res){
+		request.route('/user/init').post(CIO.validate.user,function(req,res){
 		  var select=new CIO.rdbSelect('group');
 		  var query=select.fields([
 		  		'group.id AS `id`',
@@ -103,7 +102,7 @@
 
 		//creating a new group
 		//user,device,password|name,topic (both encrypted as key comes from app)
-		request.post('/group/create',CIO.auth.userCredentials,function(req,res){
+		request.route('/group/create').post(CIO.validate.user,function(req,res){
 			//unique group name? just for creator?
 			var record={
 				id:CIO.uuid(),
@@ -129,7 +128,7 @@
 
 		//check invite hash, invite user (permission hashes do not leave device)
 		//user,device,password|permission(invite),invitedBy,group,inviteTime
-		request.post('/group/invited',CIO.auth.userCredentials,CIO.auth.validGroup,CIO.auth.groupInvited,function(req,res){
+		request.route('/group/invited').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupInvited,function(req,res){
 			var record={
 				idGroup:req.param('group'),
 				idUser:req.param('user'),
@@ -141,13 +140,13 @@
 				if(success)
 					res.json({status:'success'});
 				else
-					res.json({status:'error');
+					res.json({status:'error'});
 			});
 		});
 
 		//view the most recent posts in a group
 		//user,device,password|group
-		request.post('/group/view',CIO.auth.userCredentials,CIO.auth.validGroup,CIO.auth.groupRead,function(req,res){
+		request.route('/group/view').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,function(req,res){
 			//send back {posts:[{id,content,entered}]} or {posts:[],topic:''} or {deleted:true}
 		  var select=new CIO.rdbSelect('post');
 		  var query=select.fields([
@@ -174,7 +173,7 @@
 
 		//get new posts since the last one seen (for polling), also admin group updates
 		//user,device,password|group,post
-		request.post('/group/view/since',CIO.auth.userCredentials,CIO.auth.validGroup,CIO.auth.groupRead,function(req,res){
+		request.route('/group/view/since').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,function(req,res){
 			//send back {posts:[{id,content,entered}]} or {posts:[],topic:''} or {deleted:true}
 		  var select=new CIO.rdbSelect('post');
 		  var query=select.fields([
@@ -202,7 +201,7 @@
 
 		//post to the group
 		//user,device,password|permission,group,content,type
-		request.post('/group/post',CIO.auth.userCredentials,CIO.auth.validGroup,CIO.auth.groupPost,function(req,res){
+		request.route('/group/post').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,CIO.validate.groupPost,function(req,res){
 			var record={
 				idGroup:req.param('group'),
 				idUser:req.param('user'),
@@ -214,13 +213,13 @@
 				if(success)
 					res.json({status:'success',id:id});
 				else
-					res.json({status:'error');
+					res.json({status:'error'});
 			});
 		});
 
 		//change the group topic
 		//user,device,password|permission,group,topic
-		request.post('/group/topic',CIO.auth.userCredentials,CIO.auth.validGroup,CIO.auth.groupAdmin,function(req,res){
+		request.route('/group/topic').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,CIO.validate.groupAdmin,function(req,res){
 			var update={
 				topic:req.param('content')
 			};
@@ -231,7 +230,7 @@
 
 		//delete the group
 		//user,device,password|permission,group
-		request.post('/group/delete',CIO.auth.userCredentials,CIO.auth.validGroup,CIO.auth.groupAdmin,function(req,res){
+		request.route('/group/delete').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,CIO.validate.groupAdmin,function(req,res){
 			var update={
 				deleted:1
 			};
@@ -240,6 +239,9 @@
 			});
 		});
 
+		request.listen(CIO.settings.server.port,function(err){
+			console.log('+ Webserver Listening on port '+CIO.settings.server.port);
+		});
 	}
 
 // V A L I D A T I O N  -  M I D D L E W A R E

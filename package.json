@@ -14,6 +14,6 @@
     "method-override": "~1.0.0",
 
     "mysql":"*",
-    "bcrypt":">= 0.5.x",
+    "bcrypt":">= 0.5.x"
   }
 }
