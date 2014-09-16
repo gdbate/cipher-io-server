@@ -38,101 +38,77 @@
 			res.send('Go Away');
 		});
 
-		//first time opening app
-		//device,devicePlatform,deviceVersion,deviceModel,nickname,password1,password2
-		request.route('/user/init').post(function(req,res){
-			//confirm 2 passwords the same (also done on app, but never trust anything)
-			if(req.param('password1')!==req.param('password2')){
-				res.json({status:'error',message:'Passwords do not match.'});
-				return;
-			}
-			//check for dup device id & nickname (so they can differenciate accounts if they want more than one)
-			CIO.mysql.record(user,{id:req.param('user'),deviceId:req.param('device')},function(record){
-				if(record)
-					res.json({status:'error',message:'Duplicate nickname, please try again.'});
-				else{
-					//generate a password hash
-			    CIO.bcrypt.hash(req.param('password1'),8,function(err,hash){
-			    	var record={
-			    		deviceId:req.param('deviceId'),
-			    		devicePlatform:req.param('devicePlatform'),
-			    		deviceVersion:req.param('deviceVersion'),
-			    		deviceModel:req.param('deviceModel'),
-			    		nickname:req.param('nickname'),
-			    		password:hash,
-			    		ip:req.ip,
-			    		entered:CIO.now()
-			    	};
-						CIO.mysql.insert('user',record,function(success,id){
-							if(success&&id)
-								//send back id,success
-								res.json({status:'success',id:id});
-							else
-								//send back unknown error
-								res.json({status:'error',message:'Unknown error creating account.'});
-						});
-			    });
-				}
-			});
-		});
-
-		//get a list of groups, and update the db user information
-		//user,device,password|devicePlatform,deviceVersion,deviceModel
-		request.route('/user/init').post(CIO.validate.user,function(req,res){
-		  var select=new CIO.rdbSelect('group');
-		  var query=select.fields([
-		  		'group.id AS `id`',
-		  		'group.name AS `name`',
-		  		'group.topic AS `topic`'
-		    ])
-		  	.join('groupUser',CIO.rdbSelect.and(['groupUser.idGroup','=','group.id'],['groupUser.iduser','=',req.param('user')]))
-		  	.where(['group.deleted','!=','1'])
-			  .orderBy('`name`')
-		    .build();
-			CIO.mysql.require(function(mysqlCon,mysql){
-				var execute=new CIO.rdbMysql(mysql,mysqlCon,query).execute(function(data){
-					//send back [{id,name,topic}]
-					if(typeof data=='object'&&typeof data.results=='object'&&data.results.length)
-							res.json({status:'success',groups:data.results});
-						else
-							res.json({status:'success',groups:[]});
-				});
-			});
+		//check if valid cipher server
+		//app,device
+		request.route('/cipher-server').get(function(req,res){
+			var record={
+				status:'success',
+				owner:CIO.settings.information.owner,
+				server:CIO.settings.information.server
+			};
+			res.json(record);
 		});
 
 		//creating a new group
-		//user,device,password|name,topic (both encrypted as key comes from app)
+		//app,device|name,topic(both encrypted as key comes from app),admin,invite,post(3 are sha256'd)|nickname,app,deviceId,devicePlatform,deviceVersion,deviceModel
 		request.route('/group/create').post(CIO.validate.user,function(req,res){
-			//unique group name? just for creator?
+			var idGroup=CIO.uuid();
 			var record={
-				id:CIO.uuid(),
-				idUser:req.param('user'),
+				id:idGroup,
 				name:req.param('name'),
 				topic:req.param('topic'),
 				created:CIO.now(),
-				admin:CIO.uuid(),
-				invite:CIO.uuid(),
-				post:CIO.uuid(),
+				admin:req.param('admin'),
+				invite:req.param('invite'),
+				post:req.param('post'),
 				deleted:0
 			};
 			CIO.mysql.insert('group',record,function(success,id){
-				if(success&&id)
-					//send back id,success
-					res.json({status:'success',id:record.id,admin:record.admin,invite:record.invite,post:record.post});
-				else
-					//send back unknown error
-					res.json({status:'error',message:'Unknown error creating account.'});
+				if(!success){
+					res.json({status:'error',message:'Unknown error creating group.'});
+					return;
+				}
+				var record={
+					idGroup:idGroup,
+					nickname:req.param('nickname'),
+					ip:req.ip,
+					appId:req.param('app'),
+					deviceId:req.param('device'),
+					devicePlatform:req.param('devicePlatform'),
+					deviceVersion:req.param('deviceVersion'),
+					deviceModel:req.param('deviceModel'),
+					entered:CIO.now()
+				};
+				CIO.mysql.insert('groupUser',record,function(success,id){
+					if(!success){
+						res.json({status:'error',message:'Could not create user.'});
+						return;
+					}
+					CIO.mysql.update('group',groupId,{idGroupUser:id},function(success){
+						if(!success){
+							res.json({status:'error',message:'Could not attribute group to user.'});
+							return;
+						}
+						//send back id,success
+						res.json({status:'success',id:idGroup});
+					}
+				})
 			});
-			//send back id,admin,invite,post
 		});
 
 		//check invite hash, invite user (permission hashes do not leave device)
-		//user,device,password|permission(invite),invitedBy,group,inviteTime
-		request.route('/group/invited').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupInvited,function(req,res){
+		//app,device|permission(invite),groupInvitedTo(group ID),nickname,devicePlatform,deviceVersion,deviceModel,invitedBy,inviteTime
+		request.route('/group/invited').post(CIO.validate.user,CIO.validate.groupInvited,function(req,res){
 			var record={
 				idGroup:req.param('group'),
-				idUser:req.param('user'),
-				idUserInvitedBy:req.param('invitedBy'),
+				idGroupUserInvited:req.param('invitedBy'),
+				nickname:req.param('nickname'),
+				ip:req.ip,
+				appId:req.param('app'),
+				deviceId:req.param('device'),
+				devicePlatform:req.param('devicePlatform'),
+				deviceVersion:req.param('deviceVersion'),
+				deviceModel:req.param('deviceModel'),
 				inviteTime:req.param('inviteTime'),
 				entered:CIO.now()
 			};
@@ -145,8 +121,8 @@
 		});
 
 		//view the most recent posts in a group
-		//user,device,password|group
-		request.route('/group/view').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,function(req,res){
+		//group,app,device
+		request.route('/group/view').get(CIO.validate.user,function(req,res){
 			//send back {posts:[{id,content,entered}]} or {posts:[],topic:''} or {deleted:true}
 		  var select=new CIO.rdbSelect('post');
 		  var query=select.fields([
@@ -154,9 +130,9 @@
 		  		'post.content AS `content`',
 		  		'post.type AS `type`',
 		  		'post.entered AS `entered`',
-		  		'user.nickname AS `nickname`'
+		  		'groupUser.nickname AS `nickname`'
 		    ])
-		  	.join('user'['user.id','=','post.idUser'])
+		  	.join('groupUser'['groupUser.id','=','post.idGroupUser'])
 			  .orderBy('`id DESC`')
 			  .limit(10) //could be lots of images
 		    .build();
@@ -171,9 +147,9 @@
 			});
 		});
 
-		//get new posts since the last one seen (for polling), also admin group updates
-		//user,device,password|group,post
-		request.route('/group/view/since').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,function(req,res){
+		//get new posts since the last one seen (for polling)
+		//group,app,device|post
+		request.route('/group/view/since').get(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,function(req,res){
 			//send back {posts:[{id,content,entered}]} or {posts:[],topic:''} or {deleted:true}
 		  var select=new CIO.rdbSelect('post');
 		  var query=select.fields([
@@ -181,10 +157,10 @@
 		  		'post.content AS `content`',
 		  		'post.type AS `type`',
 		  		'post.entered AS `entered`',
-		  		'user.nickname AS `nickname`'
+		  		'groupUser.nickname AS `nickname`'
 		    ])
-		  	.join('user'['user.id','=','post.idUser'])
-		  	.where(['post.id','',])
+		  	.join('groupUser'['groupUser.id','=','post.idGroupUser'])
+		  	.where(['post.id','>',req.param('post')])
 			  .orderBy('`id DESC`')
 			  .limit(25) //could be lots of images
 		    .build();
@@ -200,12 +176,12 @@
 		});
 
 		//post to the group
-		//user,device,password|permission,group,content,type
+		//group,app,device|permission,content,type
 		request.route('/group/post').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,CIO.validate.groupPost,function(req,res){
 			var record={
 				idGroup:req.param('group'),
 				idUser:req.param('user'),
-				content:req.param('content'),
+				content:req.param('content'), //if file save to CDN or ./static
 				type:req.param('type'),
 				entered:CIO.now()
 			};
@@ -217,8 +193,8 @@
 			});
 		});
 
-		//change the group topic
-		//user,device,password|permission,group,topic
+		//change the group topic (still not hooked up)
+		//group,app,device,group|permission,topic(encrypted)
 		request.route('/group/topic').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,CIO.validate.groupAdmin,function(req,res){
 			var update={
 				topic:req.param('content')
@@ -229,7 +205,7 @@
 		});
 
 		//delete the group
-		//user,device,password|permission,group
+		//group,app,device,group|permission
 		request.route('/group/delete').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,CIO.validate.groupAdmin,function(req,res){
 			var update={
 				deleted:1
@@ -239,6 +215,7 @@
 			});
 		});
 
+		//start webserver
 		request.listen(CIO.settings.server.port,function(err){
 			console.log('+ Webserver Listening on port '+CIO.settings.server.port);
 		});
@@ -248,39 +225,36 @@
 	CIO.validate={};
 
 	CIO.validate.user=function(req,res,next){
-		//verify record
-		CIO.mysql.record('user',{id:req.param('user'),deviceId:req.param('device')},function(record){
-			if(record){
-				//password verification
-				CIO.bcrypt.compare(req.param('password'),record.password,function(err,res){
-			    if(res==true)return next();
-		    	else res.redirect('/');
-				});
-			}else res.redirect('/');
-		});
-	}
+		//verify required information sent
+		if(!req.param('app')||!req.param('device')){
+			res.json({status:'error',message:'Invalid User.'});
+			return;
+		}
 
-	//check if valid group, and if it is deleted
-	CIO.validate.group=function(req,res,next){
+		//proceed if group not required
+		if(!req.param('group'))return next();
+
+		//verify group
 		CIO.mysql.record('group',{id:req.param('group')},function(record){
 			if(record)
 				if(record.deleted==0){
 					req.group=record; //is this bad?
-					return next();
+					//verify user allowed in group
+					CIO.mysql.record('groupUser',{idGroup:req.param('group'),appId:req.param('app'),deviceId:req.param('device')},function(record){
+						if(record){
+							if(record.banned)res.json({status:'error',message:'Banned from group.',banned:true});
+						  else{
+								req.groupUser=record;
+						  	return next();
+						  }
+						}else{
+							res.json({status:'error',message:'Invalid User.'});
+							return;
+						}
+					});
 				}else res.json({status:'error',message:'Group deleted.',deleted:true});
 			else res.json({status:'error',message:'Invalid group specified.'});
 		});
-	}
-
-	//verify user can read in group and is not banned
-	CIO.validate.groupUser=function(req,res,next){
-		CIO.mysql.record('groupUser',{idGroup:req.param('group'),idUser:req.param('user')},function(record){
-			if(record)
-				if(record.banned==0)return next();
-				else res.json({status:'error',message:'Banned from group.',banned:true});
-			else res.json({status:'error',message:'Invalid Request.'});
-		});
-		res.redirect('/');
 	}
 
 	//verify user in group and permission==group.post
@@ -291,8 +265,16 @@
 
 	//the invite permission isn't the most secure thing, but I think it is better to be able to invite people offline with NFC, and they still cound read posts if forced invite
 	CIO.validate.groupInvited=function(req,res,next){
-		if(req.param('permission')==req.group.invite)return next();
-		else res.json({status:'error',message:'Insufficient privileges (invite).'});
+		//fetch group, append to res
+		CIO.mysql.record('groupUser',req.param('groupInvitedTo'),function(record){
+			if(!record){
+				res.json({status:'error',message:'Invalid Group.'});
+				return;
+			}
+			req.group=record;
+			if(req.param('permission')==req.group.invite)return next();
+			else res.json({status:'error',message:'Insufficient privileges (invite).'});
+		});
 	}
 
 	//verify user in group and permission==group.admin

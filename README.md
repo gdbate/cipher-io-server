@@ -13,15 +13,18 @@ To make this easier to make I am just creating a polling chat server. There need
 
 ##Todo##
 
+- protection against abuse
+- hook up topic changing
+- log some group activity for cleanup
 - account changing (password/nickname)
 - notifications (who is doing what aka setting topic)
 - group admin stuff (user kicking/changing name)
 - get past posts
 - (small) picture uploading
+- save images to CDN (s3) or ./static folder..
 - some better security (login attempts/ban)
 - don't assume UUID unique since I am using a random generator
 - caching
-- S3 file uploading
 - group events
 
 ##Eventually##
