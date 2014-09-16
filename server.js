@@ -6,7 +6,6 @@
 	GLOBAL.CIO=require('./ns')();
 	CIO.rdbSelect=require('./rdb-select');
 	CIO.rdbMysql=require('./rdb-mysql');
-	CIO.bcrypt=require('bcrypt');
 
 // L O A D - S E T T I N G S
 	CIO.loadConfig('config',__dirname,function(data){
@@ -91,8 +90,8 @@
 						}
 						//send back id,success
 						res.json({status:'success',id:idGroup});
-					}
-				})
+					});
+				});
 			});
 		});
 
@@ -149,7 +148,7 @@
 
 		//get new posts since the last one seen (for polling)
 		//group,app,device|post
-		request.route('/group/view/since').get(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,function(req,res){
+		request.route('/group/view/since').get(CIO.validate.user,function(req,res){
 			//send back {posts:[{id,content,entered}]} or {posts:[],topic:''} or {deleted:true}
 		  var select=new CIO.rdbSelect('post');
 		  var query=select.fields([
@@ -177,7 +176,7 @@
 
 		//post to the group
 		//group,app,device|permission,content,type
-		request.route('/group/post').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,CIO.validate.groupPost,function(req,res){
+		request.route('/group/post').post(CIO.validate.user,CIO.validate.groupPost,function(req,res){
 			var record={
 				idGroup:req.param('group'),
 				idUser:req.param('user'),
@@ -195,7 +194,7 @@
 
 		//change the group topic (still not hooked up)
 		//group,app,device,group|permission,topic(encrypted)
-		request.route('/group/topic').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,CIO.validate.groupAdmin,function(req,res){
+		request.route('/group/topic').post(CIO.validate.user,CIO.validate.groupAdmin,function(req,res){
 			var update={
 				topic:req.param('content')
 			};
@@ -206,7 +205,7 @@
 
 		//delete the group
 		//group,app,device,group|permission
-		request.route('/group/delete').post(CIO.validate.user,CIO.validate.group,CIO.validate.groupUser,CIO.validate.groupAdmin,function(req,res){
+		request.route('/group/delete').post(CIO.validate.user,CIO.validate.groupAdmin,function(req,res){
 			var update={
 				deleted:1
 			};
