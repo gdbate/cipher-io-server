@@ -13,6 +13,7 @@ To make this easier to make I am just creating a polling chat server. There need
 
 ##Todo##
 
+- server password requirement
 - public rooms?
 - protection against abuse
 - hook up topic changing

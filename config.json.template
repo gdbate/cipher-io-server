@@ -1,14 +1,26 @@
 {
   "mysql":{
-    "host":"",
-    "port":"",
+    "host":false,
+    "port":false,
   	"user":"",
-  	"password":"chicken",
+  	"password":"chicken :)",
   	"database":"cipher",
-    "socketPath":false,
-  	"retry":10
+    "socketPath":""
   },
   "server":{
-  	"open":true
+  	"name":"My Cipher.io Server",
+  	"port":1234,
+  	"password":false
+  },
+  "information":{
+  	"owner":{
+	  	"name":"",
+	  	"website":"http://www.mywebsite.com",
+	  	"email":"@"
+		},
+  	"server":{
+	  	"description":"A server for my group of friends!",
+	  	"website":false
+  	}
   }
 }

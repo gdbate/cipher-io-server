@@ -42,8 +42,8 @@
 		request.route('/cipher-server').get(function(req,res){
 			var record={
 				status:'success',
-				owner:CIO.settings.information.owner,
-				server:CIO.settings.information.server
+				name:CIO.settings.server.name,
+				information:CIO.settings.information
 			};
 			res.json(record);
 		});
@@ -51,7 +51,9 @@
 		//creating a new group
 		//app,device|name,topic(both encrypted as key comes from app),admin,invite,post(3 are sha256'd)|nickname,app,deviceId,devicePlatform,deviceVersion,deviceModel
 		request.route('/group/create').post(CIO.validate.user,function(req,res){
+			//todo: make a better uuid generator based on microtime
 			var idGroup=CIO.uuid();
+			var idUser=CIO.uuid();
 			var record={
 				id:idGroup,
 				name:req.param('name'),
@@ -68,6 +70,7 @@
 					return;
 				}
 				var record={
+					id:idUser,
 					idGroup:idGroup,
 					nickname:req.param('nickname'),
 					ip:req.ip,
@@ -78,18 +81,18 @@
 					deviceModel:req.param('deviceModel'),
 					entered:CIO.now()
 				};
-				CIO.mysql.insert('groupUser',record,function(success,id){
+				CIO.mysql.insert('user',record,function(success,id){
 					if(!success){
 						res.json({status:'error',message:'Could not create user.'});
 						return;
 					}
-					CIO.mysql.update('group',groupId,{idGroupUser:id},function(success){
+					CIO.mysql.update('group',groupId,{idUser:id},function(success){
 						if(!success){
 							res.json({status:'error',message:'Could not attribute group to user.'});
 							return;
 						}
-						//send back id,success
-						res.json({status:'success',id:idGroup});
+						//send back success,group,user(ids)
+						res.json({status:'success',group:idGroup,user:idUser});
 					});
 				});
 			});
@@ -100,7 +103,7 @@
 		request.route('/group/invited').post(CIO.validate.user,CIO.validate.groupInvited,function(req,res){
 			var record={
 				idGroup:req.param('group'),
-				idGroupUserInvited:req.param('invitedBy'),
+				idUserInvited:req.param('invitedBy'),
 				nickname:req.param('nickname'),
 				ip:req.ip,
 				appId:req.param('app'),
@@ -111,7 +114,7 @@
 				inviteTime:req.param('inviteTime'),
 				entered:CIO.now()
 			};
-			CIO.mysql.insert('groupUser',record,function(success,id){
+			CIO.mysql.insert('user',record,function(success,id){
 				if(success)
 					res.json({status:'success'});
 				else
@@ -129,9 +132,9 @@
 		  		'post.content AS `content`',
 		  		'post.type AS `type`',
 		  		'post.entered AS `entered`',
-		  		'groupUser.nickname AS `nickname`'
+		  		'user.nickname AS `nickname`'
 		    ])
-		  	.join('groupUser'['groupUser.id','=','post.idGroupUser'])
+		  	.join('user'['user.id','=','post.idUser'])
 			  .orderBy('`id DESC`')
 			  .limit(10) //could be lots of images
 		    .build();
@@ -156,9 +159,9 @@
 		  		'post.content AS `content`',
 		  		'post.type AS `type`',
 		  		'post.entered AS `entered`',
-		  		'groupUser.nickname AS `nickname`'
+		  		'user.nickname AS `nickname`'
 		    ])
-		  	.join('groupUser'['groupUser.id','=','post.idGroupUser'])
+		  	.join('user'['user.id','=','post.idUser'])
 		  	.where(['post.id','>',req.param('post')])
 			  .orderBy('`id DESC`')
 			  .limit(25) //could be lots of images
@@ -239,11 +242,11 @@
 				if(record.deleted==0){
 					req.group=record; //is this bad?
 					//verify user allowed in group
-					CIO.mysql.record('groupUser',{idGroup:req.param('group'),appId:req.param('app'),deviceId:req.param('device')},function(record){
+					CIO.mysql.record('user',{idGroup:req.param('group'),appId:req.param('app'),deviceId:req.param('device')},function(record){
 						if(record){
 							if(record.banned)res.json({status:'error',message:'Banned from group.',banned:true});
 						  else{
-								req.groupUser=record;
+								req.user=record;
 						  	return next();
 						  }
 						}else{
@@ -265,7 +268,7 @@
 	//the invite permission isn't the most secure thing, but I think it is better to be able to invite people offline with NFC, and they still cound read posts if forced invite
 	CIO.validate.groupInvited=function(req,res,next){
 		//fetch group, append to res
-		CIO.mysql.record('groupUser',req.param('groupInvitedTo'),function(record){
+		CIO.mysql.record('user',req.param('groupInvitedTo'),function(record){
 			if(!record){
 				res.json({status:'error',message:'Invalid Group.'});
 				return;
